@@ -10,10 +10,18 @@ The user can either choose to provide the Dirichlet Process concentration parame
 
 ### Prerequisites And Installation
 
+The script build.sh is provided to build the scala sources. The file run.sh launches a small 2D example with 4 clusters and 150 points each.
+
 See src/pom.xml file for Scala dependencies.
 The R script requires the "animation" and "mixtools" packages. 
 
-Two files are provided to build and run the scala sources: build.sh, run.sh
+### Results Visualization
+
+An R script if provided to visualize the evolution of the clusters memberships and model log-likelihood. The script handles the continuous 2D case and outputs a GIF such as:
+
+<p align="center">
+  <img src="https://github.com/EtienneGof/DPMM/blob/main/example_visualization.gif" />
+</p>
 
 [1] Neal, R. M. (2000). Markov chain sampling methods for Dirichlet process mixture models. Journal of computational and graphical statistics, 9(2), 249-265.
 
