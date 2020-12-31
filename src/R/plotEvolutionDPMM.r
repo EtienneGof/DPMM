@@ -4,7 +4,7 @@ library(animation)
 plotClusteringState <- function(data, clustering, components, likelihoods, idx) {
   nComponents = length(unique(clustering))
   par(mfrow = c(2,1))
-  plot(data, col = clustering +1, xlim= c(-4, 4), ylim= c(-4, 4))
+  plot(data, col = clustering + 1, xlim= c(-4, 4), ylim= c(-4, 4), main = "Cluster Membership Evolution", xlab = "", ylab = "")
   for(k in seq_len(nComponents)){
     mean = as.numeric(strsplit(components[1, (k - 1) *2 + 1],":")[[1]])
     covMat = matrix(as.numeric(strsplit(components[1, k * 2],":")[[1]]),2,2)
@@ -13,7 +13,7 @@ plotClusteringState <- function(data, clustering, components, likelihoods, idx) 
     ellipse(mu=mean, sigma=covMat, alpha = .05, npoints = 250, col=k) 
     ellipse(mu=mean, sigma=covMat, alpha = .10, npoints = 250, col=k) 
   }
-  plot(y=likelihoods, x = 1:length(likelihoods), t="l", xlab = "Iteration", ylab = "LogLikelihood")
+  plot(y=likelihoods, x = 1:length(likelihoods), t="l", xlab = "Iteration", ylab = "LogLikelihood", main = "LogLikelihood Evolution")
   points(x= idx, y= likelihoods[idx], col="red", cex=1)
   points(x= idx, y= likelihoods[idx], col="red", cex=2)
   
@@ -43,7 +43,7 @@ oopt = ani.options(interval = 0.4)
 
 des = c("Bivariate Gaussian DPMM.\n\n")
 saveGIF({
-  par(mar = c(4, 4, 0.5, 0.5))
+  par(mar = c(4, 4, 2, 2))
   for (i in 1:nIter) {
     print(i)
     plotClusteringState(data,
