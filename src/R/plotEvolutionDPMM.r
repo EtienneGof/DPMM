@@ -1,5 +1,4 @@
 library(mixtools)
-library(mvtnorm) 
 library(animation)
 
 plotClusteringState <- function(data, clustering, components, likelihoods, idx) {
