@@ -8,16 +8,19 @@ Two algorithms are implemented, corresponding to algorithm 2 (Gibbs Sampler) and
 
 The user can either choose to provide the Dirichlet Process concentration parameter value or a Gamma prior for this parameter. In the latter case, alpha's value is updated following [2].
 
-### Prerequisites And Installation
+### Quick Setup
 
-The script build.sh is provided to build the scala sources. The file run.sh launches a small 2D example with 4 clusters and 150 points each.
+The script build.sh is provided to build the scala sources. 
 
 See src/pom.xml file for Scala dependencies.
-The R script requires the "animation" and "mixtools" packages. 
+
+The file run.sh launches a small 2D example with 4 clusters and 150 points each. The results are saved in the "results" directory.
+
+The R script requires the "animation" and "mixtools" packages.
 
 ### Results Visualization
 
-An R script if provided to visualize the evolution of the clusters memberships and model log-likelihood. The script handles the continuous 2D case and outputs a GIF such as:
+An R script if provided to visualize the evolution of the clusters memberships and model log-likelihood, in the 2D case. The script reads the files written in the "results" directory.  Before launching the R script, please make sure to change the result directory path with its true value. 
 
 <p align="center">
   <img src="https://github.com/EtienneGof/DPMM/blob/main/example_visualization.gif" />
