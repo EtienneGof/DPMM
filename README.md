@@ -23,7 +23,7 @@ The R script requires the "animation" and "mixtools" packages.
 An R script if provided to visualize the evolution of the clusters memberships and model log-likelihood, in the 2D case. The script reads the files written in the "results" directory.  Before launching the R script, please make sure to change the result directory path with its true value. 
 
 <p align="center">
-  <img src="https://github.com/EtienneGof/DPMM/blob/main/example_visualization.gif" />
+  <img src="https://github.com/EtienneGof/DPMM/blob/main/visualization.gif" />
 </p>
 
 [1] Neal, R. M. (2000). Markov chain sampling methods for Dirichlet process mixture models. Journal of computational and graphical statistics, 9(2), 249-265.
