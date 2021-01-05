@@ -16,7 +16,7 @@ See src/pom.xml file for Scala dependencies.
 
 The file run.sh launches a small 2D example with 4 clusters and 150 points each. The results are saved in the "results" directory.
 
-The R script requires the "animation" and "mixtools" packages.
+The R script (for visualization) requires the "animation" and "mixtools" packages.
 
 ### How to Use ?
 
