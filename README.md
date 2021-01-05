@@ -18,6 +18,28 @@ The file run.sh launches a small 2D example with 4 clusters and 150 points each.
 
 The R script requires the "animation" and "mixtools" packages.
 
+### How to Use ?
+
+These algorithms address the case of datasets composed of real-valued observations. In order to use it on your data, use the following code:
+
+```
+
+    val data = [your data here as List[DenseVector[Double]]
+
+    val empiricMean = Common.Tools.mean(data)
+    val empiricCovariance = Common.Tools.covariance(data, empiricMean)
+    
+    val prior = new NormalInverseWishart(empiricMean, 1D, empiricCovariance, data.head.length + 1)
+
+    val alphaPrior = Gamma(shape = 9, scale = 0.5)
+    val mm = new GibbsSampler(data, prior, alphaPrior = Some(alphaPrior))
+
+    val (membership, components, logLikelihoods) = mm.run(50)
+
+```
+
+The output is the state of the MCMC at each iteration, described by the observations membership,  the component parameters, and the logLikehood.
+
 ### Results Visualization
 
 An R script if provided to visualize the evolution of the clusters memberships and model log-likelihood, in the 2D case. The script reads the files written in the "results" directory.  Before launching the R script, please make sure to change the result directory path with its true value. 
