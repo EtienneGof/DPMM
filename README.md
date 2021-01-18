@@ -1,6 +1,6 @@
 # DPMM
 
-This code performs Dirichlet Process Inference based on Monte Carlo Markov Chain sampling.
+This code performs Dirichlet Process Mixture Model Inference based on Monte Carlo Markov Chain sampling.
 
 ### What's inside 
 
