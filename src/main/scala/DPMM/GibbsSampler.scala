@@ -8,6 +8,11 @@ import breeze.stats.distributions.{Beta, Gamma, MultivariateGaussian}
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
+// Algorithm 2 of [1], for multivariate Gaussian (based on [2])
+
+// [1] Neal, R. M. (2000). Markov chain sampling methods for Dirichlet process mixture models. Journal of computational and graphical statistics, 9(2), 249-265.
+// [2] Murphy, K. P. (2007). Conjugate Bayesian analysis of the Gaussian distribution. def, 1(2σ2), 16.
+
 class GibbsSampler(val Data: List[DenseVector[Double]],
                    var prior: NormalInverseWishart = new NormalInverseWishart(),
                    var alpha: Option[Double] = None,
