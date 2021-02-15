@@ -8,6 +8,11 @@ import breeze.stats.distributions.{Beta, Gamma, MultivariateGaussian}
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
+// Algorithm 3 of [1], for multivariate Gaussian (based on [2])
+
+// [1] Neal, R. M. (2000). Markov chain sampling methods for Dirichlet process mixture models. Journal of computational and graphical statistics, 9(2), 249-265.
+// [2] Murphy, K. P. (2007). Conjugate Bayesian analysis of the Gaussian distribution. def, 1(2σ2), 16.
+
 class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
                             var prior: NormalInverseWishart = new NormalInverseWishart(),
                             var alpha: Option[Double] = None,
@@ -16,6 +21,7 @@ class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
 
   val n: Int = Data.length
 
+  // p(new cluster | prior, x_i) = \int_{\theta} F(y_i, \theta) dG_0(\theta)) in [1] eq. (3.7)
   val priorPredictive: List[Double] = Data.map(prior.predictive)
 
   var memberships: List[Int] = initByUserMembership match {
@@ -25,8 +31,10 @@ class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
     case None => List.fill(Data.length)(0)
   }
 
+  // n_k
   var countCluster: ListBuffer[Int] = memberShipToOrderedCount(memberships).to[ListBuffer]
 
+  // H_-i: prior updated
   var NIWParams: ListBuffer[NormalInverseWishart] = (Data zip memberships).groupBy(_._2).values.map(e => {
     val dataPerCluster = e.map(_._1)
     val clusterIdx = e.head._2
@@ -68,6 +76,11 @@ class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
     }
   }
 
+  // p(existing cluster | prior, x_i) = \int_{\theta} F(y_i, \theta) dH_{-i}(\theta)) in [1] eq. (3.7)
+  // Important:
+  // b) The NIWParams are already updated (they are modified on the fly at every membership update).
+  // a) Denominator (n-1+\alpha) is omitted because the probabilities are eventually normalized.
+  
   def computeClusterMembershipProbabilities(idx: Int,
                                             verbose: Boolean=false): List[Double] = {
     NIWParams.indices.map(clusterIdx => {
@@ -78,9 +91,9 @@ class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
   def drawMembership(idx: Int,
                      verbose : Boolean = false): Int = {
 
-    val probMembership = computeClusterMembershipProbabilities(idx, verbose)
+    val probExistingClusterMembership = computeClusterMembershipProbabilities(idx, verbose)
     val posteriorPredictiveXi = priorPredictive(idx)
-    val probs = probMembership :+ (posteriorPredictiveXi + log(actualAlpha))
+    val probs = probExistingClusterMembership :+ (posteriorPredictiveXi + log(actualAlpha))
     val normalizedProbs = normalizeProbability(probs)
     sample(normalizedProbs)
   }
