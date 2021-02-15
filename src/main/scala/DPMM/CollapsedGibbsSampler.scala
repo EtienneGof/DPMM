@@ -21,7 +21,7 @@ class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
 
   val n: Int = Data.length
 
-  // p(new cluster | prior, x_i) = \int_{\theta} F(y_i, \theta) dG_0(\theta)) in [1] eq. (3.7)
+  // p(x_i | z_i = new cluster, prior) <=> \int_{\theta} F(y_i, \theta) dG_0(\theta)) in [1] eq. (3.7)
   val priorPredictive: List[Double] = Data.map(prior.predictive)
 
   var memberships: List[Int] = initByUserMembership match {
@@ -34,7 +34,7 @@ class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
   // n_k
   var countCluster: ListBuffer[Int] = memberShipToOrderedCount(memberships).to[ListBuffer]
 
-  // H_-i: prior updated
+  // H_{-i}: prior updated
   var NIWParams: ListBuffer[NormalInverseWishart] = (Data zip memberships).groupBy(_._2).values.map(e => {
     val dataPerCluster = e.map(_._1)
     val clusterIdx = e.head._2
@@ -76,7 +76,7 @@ class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
     }
   }
 
-  // p(existing cluster | prior, x_i) = \int_{\theta} F(y_i, \theta) dH_{-i}(\theta)) in [1] eq. (3.7)
+  // p(x_i | z_i = existing cluster, x_{-i} in existing cluster) <=> \int_{\theta} F(y_i, \theta) dH_{-i}(\theta)) in [1] eq. (3.7)
   // Important:
   // b) The NIWParams are already updated (they are modified on the fly at every membership update).
   // a) Denominator (n-1+\alpha) is omitted because the probabilities are eventually normalized.
