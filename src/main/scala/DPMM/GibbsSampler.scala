@@ -31,9 +31,11 @@ class GibbsSampler(val Data: List[DenseVector[Double]],
   }
 
   var components: ListBuffer[MultivariateGaussian] = prior.posteriorSample(Data, memberships).to[ListBuffer]
-
+  
+  // p(x_i | new cluster, prior, x_{-i}) <=> \int_{\theta} F(y_i, \theta) dG_0(\theta)) in [1] eq. (3.7)
   val priorPredictive: List[Double] = Data.map(prior.predictive)
 
+  // n_k
   var countCluster: ListBuffer[Int] = memberShipToOrderedCount(memberships).to[ListBuffer]
 
   require(!(alpha.isEmpty & alphaPrior.isEmpty),"Either alpha or alphaPrior must be provided: please provide one of the two parameters.")
@@ -71,6 +73,11 @@ class GibbsSampler(val Data: List[DenseVector[Double]],
     }
   }
 
+    // p(x_i | \theta_k) <=> F(y_i, \theta_c) in [1] eq. (3.5) and (3.6)
+  // Important:
+  // a) Basically, based on the likelihood (component.logPfg) and p(z) (n_k / (n - 1  + \alpha)
+  // a) Denominator (n-1+\alpha) is omitted because the probabilities are eventually normalized.
+  
   def computeClusterMembershipProbabilities(idx: Int,
                                             verbose: Boolean=false): List[Double] = {
     countCluster.indices.map(k => {
