@@ -21,7 +21,8 @@ class GibbsSampler(val Data: List[DenseVector[Double]],
 
   val n: Int = Data.length
 
-  val posteriorPredictive: List[Double] = Data.map(prior.predictive)
+  // p(x_i | z_i = new cluster, prior) <=> \int_{\theta} F(y_i, \theta) dG_0(\theta)) in [1] eq. (3.7)
+  val priorPredictive: List[Double] = Data.map(prior.predictive)
 
   var memberships: List[Int] = initByUserMembership match {
     case Some(m) =>
@@ -32,9 +33,6 @@ class GibbsSampler(val Data: List[DenseVector[Double]],
 
   var components: ListBuffer[MultivariateGaussian] = prior.posteriorSample(Data, memberships).to[ListBuffer]
   
-  // p(x_i | new cluster, prior, x_{-i}) <=> \int_{\theta} F(y_i, \theta) dG_0(\theta)) in [1] eq. (3.7)
-  val priorPredictive: List[Double] = Data.map(prior.predictive)
-
   // n_k
   var countCluster: ListBuffer[Int] = memberShipToOrderedCount(memberships).to[ListBuffer]
 
@@ -73,10 +71,10 @@ class GibbsSampler(val Data: List[DenseVector[Double]],
     }
   }
 
-    // p(x_i | \theta_k) <=> F(y_i, \theta_c) in [1] eq. (3.5) and (3.6)
+   // p(x_i | z_i = k, \theta_k) <=> F(y_i, \theta_c) in [1] eq. (3.5) and (3.6)
   // Important:
   // a) Basically, based on the likelihood (component.logPfg) and p(z) (n_k / (n - 1  + \alpha)
-  // a) Denominator (n-1+\alpha) is omitted because the probabilities are eventually normalized.
+  // b) Denominator (n-1+\alpha) is omitted because the probabilities are eventually normalized.
   
   def computeClusterMembershipProbabilities(idx: Int,
                                             verbose: Boolean=false): List[Double] = {
@@ -87,7 +85,7 @@ class GibbsSampler(val Data: List[DenseVector[Double]],
 
   def drawMembership(i: Int): (Int, MultivariateGaussian) = {
     val probMembership = computeClusterMembershipProbabilities(i)
-    val probMembershipNewCluster = log(actualAlpha) + posteriorPredictive(i)
+    val probMembershipNewCluster = log(actualAlpha) + priorPredictive(i)
     val normalizedProbs = normalizeProbability(probMembership :+ probMembershipNewCluster)
     val newMembership = sample(normalizedProbs)
     val newComponent = if(newMembership >= components.length){
