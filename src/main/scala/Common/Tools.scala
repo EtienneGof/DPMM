@@ -55,7 +55,8 @@ object Tools extends java.io.Serializable {
     if (n == 0) {0} else {log(n) + logFactorial(n-1)}
   }
 
-  def memberShipToOrderedCount(membership: List[Int]): List[Int] = {
+  // count the number of elements in each cluster of a given partition and return the list, sorted by cluster index
+  def partitionToOrderedCount(membership: List[Int]): List[Int] = {
     membership.groupBy(identity).mapValues(_.size).toList.sortBy(_._1).map(_._2)
   }
 
