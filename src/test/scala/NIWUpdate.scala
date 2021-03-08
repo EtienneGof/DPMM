@@ -40,23 +40,20 @@ class NIWUpdate extends FunSuite {
 
   test("Update NIW with data") {
     {
-      val data = MultivariateGaussian(DenseVector(0D,0D), DenseMatrix.eye[Double](2)).sample(100).toList
+
+      val n = 100
+      val data = MultivariateGaussian(DenseVector(0D,0D), DenseMatrix.eye[Double](2)).sample(n).toList
       val globalMean = Common.Tools.mean(data)
       val globalVariance = Common.Tools.covariance(data, globalMean)
       val globalPrecision = inv(globalVariance)
       val prior = new NormalInverseWishart(globalMean, 1D, globalPrecision, data.head.length + 1)
+      assertResult(globalMean)(prior.mu)
+      assertResult(globalPrecision)(prior.psi)
+
       val updatedPrior = prior.update(data)
 
-      prior.print()
-      updatedPrior.print()
-
-      println(globalMean)
-      println(globalVariance)
-      println(globalPrecision)
-
-      assertResult(globalMean)(prior.mu)
-      assertResult(globalMean)(updatedPrior.mu)
-      assertResult(globalPrecision)(prior.mu)
+      assertResult(updatedPrior.kappa)(1D + n)
+      assertResult(updatedPrior.nu)(data.head.length + 1 + n)
 
     }
   }
@@ -64,20 +61,19 @@ class NIWUpdate extends FunSuite {
   test("Wishart density") {
     {
       val prior = new NormalInverseWishart(
-        DenseVector(0,0),
-        1,
-        2D * DenseMatrix.eye[Double](2),
-        3)
-      val mv = MultivariateGaussian(DenseVector(0,0),
-        DenseMatrix.eye[Double](2))
+        DenseVector(0.2,0.3),
+        2,
+        DenseMatrix(Array(3.1, 0D, 0D, 1.35)).reshape(2,2),
+        5)
+      val mv = MultivariateGaussian(DenseVector(1,0),
+        1.2 * DenseMatrix.eye[Double](2))
       val d = prior.logPdf(mv)
-      assertResult(round(d,6))(-4.28946)
+      assertResult(round(d,7))(-5.9921409)
     }
   }
 
   test("log factorial") {
     {
-
       assertResult(logFactorial(5D))(log(factorial(5D)))
     }
   }
