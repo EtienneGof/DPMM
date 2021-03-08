@@ -20,11 +20,11 @@ object Main {
     val empiricCovariance = Common.Tools.covariance(data, empiricMean)
     val prior = new NormalInverseWishart(empiricMean, 1D, empiricCovariance, data.head.length + 1)
 
-    val alpha = 4D
+    val alpha = 1D
     val nIter = 50
 
     val alphaPrior = Gamma(shape = 9, scale = 0.5)
-    val mm = new GibbsSampler(data, prior, alphaPrior = Some(alphaPrior))
+    val mm = new GibbsSampler(data, prior, alpha = Some(alpha))
 
     val (membership, components, likelihoods) = mm.run(nIter)
 

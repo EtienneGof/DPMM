@@ -32,7 +32,7 @@ class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
   }
 
   // n_k
-  var countCluster: ListBuffer[Int] = memberShipToOrderedCount(memberships).to[ListBuffer]
+  var countCluster: ListBuffer[Int] = partitionToOrderedCount(memberships).to[ListBuffer]
 
   // H_{-i}: prior updated
   var NIWParams: ListBuffer[NormalInverseWishart] = (Data zip memberships).groupBy(_._2).values.map(e => {

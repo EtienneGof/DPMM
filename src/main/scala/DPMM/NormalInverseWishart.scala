@@ -9,8 +9,7 @@ import org.apache.commons.math3.special.Gamma
 class NormalInverseWishart(val mu: DenseVector[Double] = DenseVector(0D),
                            val kappa: Double = 1D,
                            val psi: DenseMatrix[Double] = DenseMatrix(1D),
-                           val nu: Int = 1
-                          ) {
+                           val nu: Int = 1) {
   val p: Int = psi.rows
   val studentNu: Int = this.nu - p + 1
   val studentPsi: DenseMatrix[Double] = ((this.kappa + 1) / (this.kappa * studentNu)) * this.psi
@@ -43,7 +42,7 @@ class NormalInverseWishart(val mu: DenseVector[Double] = DenseVector(0D),
     val a = Gamma.logGamma((nu + d)/2D)
     val b = Gamma.logGamma(nu / 2D) + (d/2D) * log(Pi * nu) + .5 *log(det(sigma))
     val c = log(pow(1 + (1D/nu)* (x_mu.t * inv(sigma) * x_mu), -(nu + d)/2D))
-    (a-b)+c
+    (a - b ) + c
   }
 
   def update(data: List[DenseVector[Double]]): NormalInverseWishart = {

@@ -34,7 +34,7 @@ class GibbsSampler(val Data: List[DenseVector[Double]],
   var components: ListBuffer[MultivariateGaussian] = prior.posteriorSample(Data, memberships).to[ListBuffer]
   
   // n_k
-  var countCluster: ListBuffer[Int] = memberShipToOrderedCount(memberships).to[ListBuffer]
+  var countCluster: ListBuffer[Int] = partitionToOrderedCount(memberships).to[ListBuffer]
 
   require(!(alpha.isEmpty & alphaPrior.isEmpty),"Either alpha or alphaPrior must be provided: please provide one of the two parameters.")
   require(!(alpha.isDefined & alphaPrior.isDefined), "Providing both alpha or alphaPrior is not supported: remove one of the two parameters.")
@@ -152,5 +152,6 @@ class GibbsSampler(val Data: List[DenseVector[Double]],
 
     go(1)
 
-    (membershipEveryIteration, componentEveryIteration, likelihoodEveryIteration)  }
+    (membershipEveryIteration, componentEveryIteration, likelihoodEveryIteration)
+  }
 }
