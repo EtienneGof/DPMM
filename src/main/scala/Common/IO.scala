@@ -17,6 +17,20 @@ object IO {
         (serial + 1, (serial.toString +: value) +: acc)
     }._2.reverse
 
+  def readDataSet(path: String): List[List[Double]] = {
+    val lines = Source.fromFile(path).getLines.toList.drop(1)
+    lines.indices.map(seg => {
+      lines(seg).drop(1).dropRight(1).split(";").toList.map(string => string.split(":")(1).toDouble)
+    }).toList
+  }
+
+  def readDenseMatrixDvDouble(path: String): DenseMatrix[DenseVector[Double]] = {
+    val lines = Source.fromFile(path).getLines.toList.drop(1)
+    DenseMatrix(lines.map(line =>  {
+      val elementList = line.drop(1).dropRight(1).split("\",\"").toList
+      elementList.map(string => DenseVector(string.split(":").map(_.toDouble)))
+    }):_*)
+  }
 
   def writeMatrixDoubleToCsv(fileName: String, Matrix: DenseMatrix[Double], withHeader:Boolean=true): Unit = {
     val header: List[String] = List("id") ++ (0 until Matrix.cols).map(_.toString).toList
