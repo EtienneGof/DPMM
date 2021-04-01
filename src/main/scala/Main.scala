@@ -2,6 +2,7 @@ import Common.DataGeneration
 import DPMM.{CollapsedGibbsSampler, GibbsSampler, NormalInverseWishart}
 import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.stats.distributions.Gamma
+import smile.validation.{NormalizedMutualInformation, adjustedRandIndex, randIndex}
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -20,7 +21,7 @@ object Main {
     val empiricCovariance = Common.Tools.covariance(data, empiricMean)
     val prior = new NormalInverseWishart(empiricMean, 1D, empiricCovariance, data.head.length + 1)
 
-    val alpha = 2D
+    val alpha = 5D
     val nIter = 100
 
     val alphaPrior = Gamma(shape = 9, scale = 0.5)
@@ -28,7 +29,15 @@ object Main {
 
     val (membership, components, likelihoods) = mm.run(nIter)
 
-    Common.IO.writeCompleteMCMC("results", data, membership, components, likelihoods)
+    val trueMembership = List(0,1,2,3).flatMap(List.fill(150)(_))
 
+
+    val ARI = adjustedRandIndex(membership.last.toArray, trueMembership.toArray)
+    val RI = randIndex(membership.last.toArray, trueMembership.toArray)
+
+    println("ARI = " + ARI.toString)
+    println("RI = " + RI.toString)
+
+    Common.IO.writeCompleteMCMC("results", data, membership, components, likelihoods)
   }
 }
