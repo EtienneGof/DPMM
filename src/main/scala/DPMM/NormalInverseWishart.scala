@@ -105,12 +105,22 @@ class NormalInverseWishart(val mu: DenseVector[Double] = DenseVector(0D),
     gaussianLogDensity + invWishartLogDensity
   }
 
+
   def InvWishartlogPdf(Sigma:DenseMatrix[Double]): Double = {
     (nu / 2D) * log(det(psi)) -
-      ((nu * p)/2D) * log(2) -
-      multiloggamma( nu/2D, p) -
+      ((nu * p) / 2D) * log(2) -
+      multiloggamma( nu / 2D, p) -
       0.5*(nu + p + 1) * log(det(Sigma)) -
       0.5 * trace(psi * inv(Sigma))
+  }
+
+  def probabilityPartition(nCluster: Int,
+                           alpha: Double,
+                           countByCluster: List[Int],
+                           n: Int): Double = {
+    nCluster * log(alpha) +
+      countByCluster.map(c => Common.Tools.logFactorial(c - 1)).sum -
+      (0 until n).map(e => log(alpha + e.toDouble)).sum
   }
 
   def likelihood(alpha: Double,
@@ -125,6 +135,63 @@ class NormalInverseWishart(val mu: DenseVector[Double] = DenseVector(0D),
     val dataLikelihood = data.indices.map( i => components(membership(i)).logPdf(data(i))).sum
     val paramsDensity = components.map(logPdf).sum
     partitionDensity + paramsDensity + dataLikelihood
+  }
+
+  def DPMMLikelihood(alpha: Double,
+                     data: List[DenseVector[Double]],
+                     membership: List[Int],
+                     countCluster: List[Int],
+                     components: List[MultivariateGaussian]): Double = {
+    val K = countCluster.length
+    val partitionDensity = probabilityPartition(K, alpha, countCluster, data.length)
+    val dataLikelihood = data.indices.map( i => components(membership(i)).logPdf(data(i))).sum
+    val paramsDensity = components.map(logPdf).sum
+    partitionDensity + paramsDensity + dataLikelihood
+  }
+
+  def weightedUpdate(data: DenseVector[Double], weight: Int): NormalInverseWishart = {
+    val repeatedData = List.fill(weight)(data)
+    val n = repeatedData.length.toDouble
+    val meanData = repeatedData.reduce(_ + _) / n.toDouble
+    val newKappa: Double = this.kappa + n
+    val newNu = this.nu + n.toInt
+    val newMu = (this.kappa * this.mu + n * meanData) / newKappa
+    val x_mu0 = meanData - this.mu
+    val C = if (n == 1) {
+      DenseMatrix.zeros[Double](p,p)
+    } else {
+      sum(repeatedData.map(x => {
+        val x_mu = x - meanData
+        x_mu * x_mu.t
+      }))
+    }
+    val newPsi = this.psi + C + ((n * this.kappa) / newKappa) * (x_mu0 * x_mu0.t)
+    new NormalInverseWishart(newMu, newKappa, newPsi, newNu)
+  }
+
+
+  def weightedRemoveObservation(data: DenseVector[Double], weight: Int): NormalInverseWishart = {
+    val repeatedData = List.fill(weight)(data)
+
+    val n = weight.toDouble
+    val meanData = repeatedData.reduce(_ + _) / n.toDouble
+    val newKappa = this.kappa - n
+    val newNu = this.nu - n.toInt
+    val newMu = (this.kappa * this.mu - n * meanData) / newKappa
+    val x_mu0 = meanData - this.mu
+    val C = if (n == 1) {
+      DenseMatrix.zeros[Double](p,p)
+    } else {
+      sum(repeatedData.map(x => {
+        val x_mu = x - meanData
+        x_mu * x_mu.t
+      }))
+    }
+
+    val newPsi = this.psi - C - ((n * this.kappa) / newKappa) * (x_mu0 * x_mu0.t)
+    require(newKappa>0)
+    require(newNu>0)
+    new NormalInverseWishart(newMu, newKappa, newPsi, newNu)
   }
 
   def posteriorSample(Data: List[DenseVector[Double]],

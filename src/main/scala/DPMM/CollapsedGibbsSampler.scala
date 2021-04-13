@@ -1,163 +1,90 @@
 package DPMM
 
-import Common.Tools._
 import breeze.linalg.{DenseVector, inv}
-import breeze.numerics.log
-import breeze.stats.distributions.{Beta, Gamma, MultivariateGaussian}
+import breeze.stats.distributions.{Gamma, MultivariateGaussian}
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
-// Algorithm 3 of [1], for multivariate Gaussian (based on [2])
+class CollapsedGibbsSampler(Data: List[DenseVector[Double]],
+                            prior: NormalInverseWishart = new NormalInverseWishart(),
+                            alpha: Option[Double] = None,
+                            alphaPrior: Option[Gamma] = None,
+                            initByUserPartition: Option[List[Int]] = None
+                           ) extends Default(Data, prior, alpha, alphaPrior, initByUserPartition) {
 
-// [1] Neal, R. M. (2000). Markov chain sampling methods for Dirichlet process mixture models. Journal of computational and graphical statistics, 9(2), 249-265.
-// [2] Murphy, K. P. (2007). Conjugate Bayesian analysis of the Gaussian distribution. def, 1(2σ2), 16.
-
-class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
-                            var prior: NormalInverseWishart = new NormalInverseWishart(),
-                            var alpha: Option[Double] = None,
-                            var alphaPrior: Option[Gamma] = None,
-                            var initByUserMembership: Option[List[Int]] = None) extends Serializable {
-
-  val n: Int = Data.length
-
-  // p(x_i | z_i = new cluster, prior) <=> \int_{\theta} F(y_i, \theta) dG_0(\theta)) in [1] eq. (3.7)
-  val priorPredictive: List[Double] = Data.map(prior.predictive)
-
-  var memberships: List[Int] = initByUserMembership match {
-    case Some(m) =>
-      require(m.length == Data.length)
-      m
-    case None => List.fill(Data.length)(0)
-  }
-
-  // n_k
-  var countCluster: ListBuffer[Int] = partitionToOrderedCount(memberships).to[ListBuffer]
-
-  // H_{-i}: prior updated
-  var NIWParams: ListBuffer[NormalInverseWishart] = (Data zip memberships).groupBy(_._2).values.map(e => {
+  var NIWParams: ListBuffer[NormalInverseWishart] = (Data zip partition).groupBy(_._2).values.map(e => {
     val dataPerCluster = e.map(_._1)
     val clusterIdx = e.head._2
     (clusterIdx, prior.update(dataPerCluster))
   }).toList.sortBy(_._1).map(_._2).to[ListBuffer]
 
-  require(!(alpha.isEmpty & alphaPrior.isEmpty),"Either alpha or alphaPrior must be provided: please provide one of the two parameters.")
-  require(!(alpha.isDefined & alphaPrior.isDefined), "Providing both alpha or alphaPrior is not supported: remove one of the two parameters.")
-
-  var updateAlphaFlag: Boolean = alphaPrior.isDefined
-
-  var actualAlphaPrior: Gamma = alphaPrior match {
-    case Some(g) => g
-    case None => new Gamma(1D,1D)
+  override def posteriorPredictive(observation: DenseVector[Double], cluster: Int): Double = {
+    NIWParams(cluster).predictive(observation)
   }
 
-  var actualAlpha: Double = alpha match {
-    case Some(a) =>
-      require(a > 0, s"Alpha parameter is optional and should be > 0 if provided, but got $a")
-      a
-    case None => actualAlphaPrior.mean
-  }
-
-  def updateAlpha() {
-    val shape = actualAlphaPrior.shape
-    val rate =  1D/actualAlphaPrior.scale
-    val nCluster = countCluster.length
-
-    val log_x = log(new Beta(actualAlpha + 1, n).draw())
-    val pi1 = shape + nCluster + 1
-    val pi2 = n * (rate - log_x)
-    val pi = pi1/(pi1+pi2)
-    val newScale = 1/(rate - log_x)
-
-    actualAlpha = if(sample(List(pi, 1-pi)) == 0){
-      Gamma(shape = shape + nCluster, newScale).draw()
+  def removeElementFromNIW(idx: Int): Unit = {
+    val currentPartition =  partition(idx)
+    if (countCluster(currentPartition) == 1) {
+      NIWParams.remove(currentPartition)
     } else {
-      Gamma(shape = shape + nCluster - 1, newScale).draw()
+      val updatedNIWParams = NIWParams(currentPartition).removeObservations(List(Data(idx)))
+      NIWParams.update(currentPartition, updatedNIWParams)
     }
   }
 
-  // p(x_i | z_i = existing cluster, x_{-i} in existing cluster) <=> \int_{\theta} F(y_i, \theta) dH_{-i}(\theta)) in [1] eq. (3.7)
-  // Important:
-  // b) The NIWParams are already updated (they are modified on the fly at every membership update).
-  // a) Denominator (n-1+\alpha) is omitted because the probabilities are eventually normalized.
-  
-  def computeClusterMembershipProbabilities(idx: Int,
-                                            verbose: Boolean=false): List[Double] = {
-    NIWParams.indices.map(clusterIdx => {
-      NIWParams(clusterIdx).predictive(Data(idx)) + log(countCluster(clusterIdx))
-    }) .toList
-  }
-
-  def drawMembership(idx: Int,
-                     verbose : Boolean = false): Int = {
-
-    val probExistingClusterMembership = computeClusterMembershipProbabilities(idx, verbose)
-    val posteriorPredictiveXi = priorPredictive(idx)
-    val probs = probExistingClusterMembership :+ (posteriorPredictiveXi + log(actualAlpha))
-    val normalizedProbs = normalizeProbability(probs)
-    sample(normalizedProbs)
-  }
-
-  private def removeElementFromCluster(idx: Int): Unit = {
-    val currentMembership =  memberships(idx)
-    if (countCluster(currentMembership) == 1) {
-      countCluster.remove(currentMembership)
-      NIWParams.remove(currentMembership)
-      memberships = memberships.map(c => { if( c > currentMembership ){ c - 1 } else c })
-    } else {
-      countCluster.update(currentMembership, countCluster.apply(currentMembership) - 1)
-      val updatedNIWParams = NIWParams(currentMembership).removeObservations(List(Data(idx)))
-      NIWParams.update(currentMembership, updatedNIWParams)
-    }
-  }
-
-  private def addElementToCluster(idx: Int, newMembership: Int): Unit = {
-    if (newMembership == countCluster.length) { // Creation of a new cluster
-      countCluster = countCluster ++ ListBuffer(1)
+  def addElementToNIW(idx: Int): Unit = {
+    val newPartition = partition(idx)
+    if (newPartition == countCluster.length) { // Creation of a new cluster
       val newNIWparam = this.prior.update(List(Data(idx)))
       NIWParams = NIWParams ++ ListBuffer(newNIWparam)
     } else {
-      countCluster.update(newMembership, countCluster.apply(newMembership) + 1)
-      val updatedNIWParams = NIWParams(newMembership).update(List(Data(idx)))
-      NIWParams.update(newMembership, updatedNIWParams)
+      val updatedNIWParams = NIWParams(newPartition).update(List(Data(idx)))
+      NIWParams.update(newPartition, updatedNIWParams)
     }
   }
 
-  def updateMembership(verbose: Boolean = false): Unit = {
+  override def updatePartition(verbose: Boolean = false): Unit = {
     for (i <- 0 until n) {
+      removeElementFromNIW(i)
       removeElementFromCluster(i)
-      val newMembership = drawMembership(i)
-      memberships = memberships.updated(i, newMembership)
-      addElementToCluster(i, newMembership)
+      drawMembership(i)
+      addElementToNIW(i)
+      addElementToCluster(i)
     }
   }
+
+  ///////////////////////
 
   def run(maxIter: Int = 10,
           maxIterBurnin: Int = 10,
           verbose: Boolean = false): (List[List[Int]], List[List[MultivariateGaussian]], List[Double]) = {
 
-    var membershipEveryIteration = List(memberships)
-    var componentEveryIteration = List(prior.posteriorSample(Data, memberships).map(e => MultivariateGaussian(e.mean, inv(e.covariance))))
-    var likelihoodEveryIteration = List(prior.likelihood(actualAlpha, Data, memberships, countCluster.toList, componentEveryIteration.head))
+    var membershipEveryIteration = List(partition)
+    var componentEveryIteration = List(prior.posteriorSample(Data, partition).map(e => MultivariateGaussian(e.mean, inv(e.covariance))))
+    var likelihoodEveryIteration = List(prior.DPMMLikelihood(actualAlpha, Data, partition, countCluster.toList, componentEveryIteration.head))
 
     @tailrec def go(iter: Int): Unit = {
-      println("\n>>>>>> Iteration: " + iter.toString)
-      println("\u03B1 = " + actualAlpha.toString)
-      println("Cluster sizes: "+ countCluster.mkString(" "))
 
-      if (iter > (maxIter + maxIterBurnin)) {
-      } else {
-        updateMembership()
+      if(verbose){
+        println("\n>>>>>> Iteration: " + iter.toString)
+        println("\u03B1 = " + actualAlpha.toString)
+        println("Cluster sizes: "+ countCluster.mkString(" "))
+      }
 
-        if(updateAlphaFlag){updateAlpha()}
+      if (iter <= (maxIter + maxIterBurnin)) {
 
-        val components = prior.posteriorSample(Data, memberships)
-        val likelihood = prior.likelihood(actualAlpha,
+        updatePartition()
+
+        conditionalAlphaUpdate
+
+        val components = prior.posteriorSample(Data, partition)
+        val likelihood = prior.DPMMLikelihood(actualAlpha,
           Data,
-          memberships,
+          partition,
           countCluster.toList,
           components)
-        membershipEveryIteration = membershipEveryIteration :+ memberships
+        membershipEveryIteration = membershipEveryIteration :+ partition
         componentEveryIteration = componentEveryIteration :+ components
         likelihoodEveryIteration = likelihoodEveryIteration :+ likelihood
         go(iter + 1)
@@ -166,6 +93,7 @@ class CollapsedGibbsSampler(val Data: List[DenseVector[Double]],
 
     go(1)
 
-    (membershipEveryIteration, componentEveryIteration, likelihoodEveryIteration)  }
+    (membershipEveryIteration, componentEveryIteration, likelihoodEveryIteration)
+  }
 }
 

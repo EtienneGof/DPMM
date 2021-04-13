@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.etienne</groupId>
-    <artifactId>NP_Coclustering_${scala.compat.version}_${maven.build.timestamp}</artifactId>
+    <artifactId>DPMM_${scala.compat.version}_${maven.build.timestamp}</artifactId>
     <version>1.0</version>
 
     <properties>

@@ -31,7 +31,6 @@ object Main {
 
     val trueMembership = List(0,1,2,3).flatMap(List.fill(150)(_))
 
-
     val ARI = adjustedRandIndex(membership.last.toArray, trueMembership.toArray)
     val RI = randIndex(membership.last.toArray, trueMembership.toArray)
 

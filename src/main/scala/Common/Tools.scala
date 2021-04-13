@@ -1,7 +1,9 @@
 package Common
 
-import breeze.linalg.{DenseMatrix, DenseVector, max, sum}
+import breeze.linalg.eigSym.EigSym
+import breeze.linalg.{DenseMatrix, DenseVector, eigSym, max, sum}
 import breeze.numerics.{exp, log}
+import breeze.stats.distributions.{Beta, Gamma}
 
 object Tools extends java.io.Serializable {
 
@@ -23,6 +25,54 @@ object Tools extends java.io.Serializable {
     X.reduce(_+_) / X.length.toDouble
   }
 
+  def updateAlpha(alpha: Double, alphaPrior: Gamma, nCluster: Int, nObservations: Int): Double = {
+    val shape = alphaPrior.shape
+    val rate =  1D / alphaPrior.scale
+
+    val log_x = log(new Beta(alpha + 1, nObservations).draw())
+    val pi1 = shape + nCluster + 1
+    val pi2 = nObservations * (rate - log_x)
+    val pi = pi1 / (pi1 + pi2)
+    val newScale = 1 / (rate - log_x)
+
+    max(if(sample(List(pi, 1 - pi)) == 0){
+      Gamma(shape = shape + nCluster, newScale).draw()
+    } else {
+      Gamma(shape = shape + nCluster - 1, newScale).draw()
+    }, 1e-8)
+  }
+
+  def relabel[T: Ordering](L: List[T]): List[Int] = {
+    val uniqueLabels = L.distinct.sorted
+    val dict = uniqueLabels.zipWithIndex.toMap
+    L.map(dict)
+  }
+
+  def checkPosDef(M: DenseMatrix[Double]): Unit = {
+    val EigSym(lambda, _) = eigSym(M)
+    assert(lambda.forall(_>0))
+  }
+
+
+  def normalizeProbability(probs: List[Double]): List[Double] = {
+    normalizeLogProbability(probs.map(e => log(e)))
+  }
+
+  def logSumExp(X: List[Double]): Double ={
+    val maxValue = max(X)
+    maxValue + log(sum(X.map(x => exp(x-maxValue))))
+  }
+
+  def logSumExp(X: DenseVector[Double]): Double ={
+    val maxValue = max(X)
+    maxValue + log(sum(X.map(x => exp(x-maxValue))))
+  }
+
+  def normalizeLogProbability(probs: List[Double]): List[Double] = {
+    val LSE = logSumExp(probs)
+    probs.map(e => exp(e - LSE))
+  }
+
   def sample(probabilities: List[Double]): Int = {
     val dist = probabilities.indices zip probabilities
     val threshold = scala.util.Random.nextDouble
@@ -37,14 +87,8 @@ object Tools extends java.io.Serializable {
     sys.error("Error")
   }
 
-  def logSumExp(X: List[Double]): Double ={
-    val maxValue = max(X)
-    maxValue + log(sum(X.map(x => exp(x-maxValue))))
-  }
-
-  def normalizeProbability(probs: List[Double]): List[Double] = {
-    val LSE = Common.Tools.logSumExp(probs)
-    probs.map(e => exp(e - LSE))
+  def getPartitionFromSize(size: List[Int]): List[Int] = {
+    size.indices.map(idx => List.fill(size(idx))(idx)).reduce(_ ++ _)
   }
 
   def factorial(n: Double): Double = {
