@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.etienne</groupId>
-    <artifactId>DPMM_${scala.compat.version}_${maven.build.timestamp}</artifactId>
+    <artifactId>DPMM_${scala.compat.version}</artifactId>
     <version>1.0</version>
 
     <properties>
