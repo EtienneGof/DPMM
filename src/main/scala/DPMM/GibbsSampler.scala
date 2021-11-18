@@ -86,7 +86,8 @@ class GibbsSampler(val Data: List[DenseVector[Double]],
   def drawMembership(i: Int): (Int, MultivariateGaussian) = {
     val probMembership = computeClusterMembershipProbabilities(i)
     val probMembershipNewCluster = log(actualAlpha) + priorPredictive(i)
-    val normalizedProbs = normalizeProbability(probMembership :+ probMembershipNewCluster)
+
+    val normalizedProbs = normalizeLogProbability(probMembership :+ probMembershipNewCluster)
     val newMembership = sample(normalizedProbs)
     val newComponent = if(newMembership >= components.length){
       prior.update(List(Data(i))).sample()
